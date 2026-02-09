@@ -1,7 +1,8 @@
-import re
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, MultipleFileField
-from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from wtforms import StringField, SubmitField, MultipleFileField, URLField
+from wtforms.validators import (DataRequired, Optional,
+                                ValidationError, Regexp,
+                                URL, Length)
 from yacut.constants import ALLOWED_CHARS, MAX_SHORT_ID_LENGTH
 from yacut.models import URLMap
 
@@ -12,11 +13,6 @@ def validate_custom_id(form, field):
             raise ValidationError(
                 'Предложенный вариант короткой ссылки уже существует.'
             )
-        pattern = f'^[{re.escape(ALLOWED_CHARS)}]+$'
-        if not re.match(pattern, field.data):
-            raise ValidationError(
-                'Указано недопустимое имя для короткой ссылки'
-            )
         if URLMap.query.filter_by(short=field.data).first():
             raise ValidationError(
                 'Предложенный вариант короткой ссылки уже существует.'
@@ -24,15 +20,19 @@ def validate_custom_id(form, field):
 
 
 class URLForm(FlaskForm):
-    original_link = StringField(
+    original_link = URLField(
         'Длинная ссылка',
-        validators=[DataRequired(message='Обязательное поле')]
+        validators=[DataRequired(message='Обязательное поле'), URL()]
     )
     custom_id = StringField(
         'Ваш вариант короткой ссылки',
         validators=[
             Optional(),
             Length(max=MAX_SHORT_ID_LENGTH),
+            Regexp(
+                f'^[{ALLOWED_CHARS}]+$',
+                message='Указано недопустимое имя для короткой ссылки'
+            ),
             validate_custom_id
         ]
     )
